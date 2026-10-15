@@ -16,36 +16,43 @@
   nav.addEventListener('click', event => { if (event.target.closest('a')) closeMenu(); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenu(); });
   window.matchMedia('(min-width: 701px)').addEventListener('change', event => { if (event.matches) closeMenu(); });
+  const careerDetails = [...document.querySelectorAll('#experience details')];
+  document.querySelectorAll('[data-career-action]').forEach(button => {
+    button.addEventListener('click', () => {
+      const open = button.dataset.careerAction === 'expand';
+      careerDetails.forEach(detail => { detail.open = open; });
+      document.querySelector('#career-status').textContent = open
+        ? '회사 3곳과 프로젝트 15개를 모두 펼쳤습니다.'
+        : '모든 경력 상세를 접었습니다.';
+    });
+  });
+
   const studio = document.querySelector('#studio');
-  const art = studio.querySelector('.studio-art');
-  const label = studio.querySelector('.studio-label');
+  const animationToggle = studio.querySelector('.animation-toggle');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let timer;
-  const resetGaze = () => {
-    studio.style.setProperty('--eye-x', '0px');
-    studio.style.setProperty('--eye-y', '0px');
-    studio.style.setProperty('--head-turn', '0deg');
+  let manuallyPaused = false;
+  let studioVisible = false;
+  const updateAnimation = () => {
+    const paused = manuallyPaused || reducedMotion.matches;
+    studio.classList.toggle('typing', studioVisible && !paused && !document.hidden);
+    animationToggle.hidden = reducedMotion.matches;
+    animationToggle.setAttribute('aria-pressed', String(manuallyPaused));
+    animationToggle.setAttribute('aria-label', manuallyPaused ? '강아지 애니메이션 재생' : '강아지 애니메이션 일시정지');
+    animationToggle.firstElementChild.textContent = manuallyPaused ? '▷' : 'Ⅱ';
   };
-  studio.addEventListener('pointermove', event => {
-    if (reducedMotion.matches) return;
-    const bounds = art.getBoundingClientRect();
-    const x = Math.max(-1, Math.min(1, (event.clientX - bounds.left - bounds.width * .38) / (bounds.width * .45)));
-    const y = Math.max(-1, Math.min(1, (event.clientY - bounds.top - bounds.height * .33) / (bounds.height * .6)));
-    studio.style.setProperty('--eye-x', `${x * 10}px`);
-    studio.style.setProperty('--eye-y', `${y * 8}px`);
-    studio.style.setProperty('--head-turn', `${x * 3}deg`);
+  animationToggle.addEventListener('click', () => {
+    manuallyPaused = !manuallyPaused;
+    updateAnimation();
   });
-  studio.addEventListener('pointerleave', resetGaze);
-  studio.addEventListener('click', () => {
-    window.clearTimeout(timer);
-    studio.classList.add('typing');
-    label.textContent = '타닥타닥, 오늘도 개발 중!';
-    timer = window.setTimeout(() => {
-      studio.classList.remove('typing');
-      label.textContent = '마우스로 눈맞춤 · 클릭하면 타이핑';
-    }, 2300);
-  });
-  reducedMotion.addEventListener('change', resetGaze);
+  reducedMotion.addEventListener('change', updateAnimation);
+  document.addEventListener('visibilitychange', updateAnimation);
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(entries => {
+      studioVisible = entries[0].isIntersecting;
+      updateAnimation();
+    }, { threshold: .1 }).observe(studio);
+  } else { studioVisible = true; }
+  updateAnimation();
 
   const mapContainer = document.querySelector('#map');
   const mapNote = document.querySelector('.map-note');
